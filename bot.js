@@ -33,6 +33,7 @@ bot.on('ready', function (evt) {
 });
 
 
+
 /* Telnet Socket Connections */
 initializeSocket = function () {
     socket = io.connect(auth.port, auth.host, function () {
@@ -51,11 +52,12 @@ initializeSocket = function () {
 };
 
 function _initializeSocketListeners() {
-    // Login
+    /******************
+     * Data Listeners *
+     ******************/
     socket.on('data', function (data) {
-        /******************
-         * Data Listeners *
-         ******************/
+        logger.info(data);
+
         // Enter credentials
         if (data.toString().indexOf('lease enter password:') !== -1) {
             console.log('Entering credentials...');
@@ -108,7 +110,6 @@ function getPositions() {
         console.log(next.x, next.z, next.name);
     }
 }
-
 
 function sendMessage (message) {
     bot.sendMessage({
