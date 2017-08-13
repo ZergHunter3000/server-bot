@@ -5,6 +5,7 @@ let io            = require('net');
 let child_process = require('child_process');
 
 let socket;
+let playerList;
 
 
 /* Configure Logger Settings */
@@ -44,7 +45,6 @@ initializeSocket = function () {
         });
 
     setTimeout (function () {
-        exports.socket = socket;
         return socket.readable;
     }, 4500);
 };
@@ -59,17 +59,53 @@ function _initializeSocketListeners() {
 
         logger.info('~~~~~~Data Object~~~~~~');
         //
+        if (data.toString().indexOf('Spawning wandering horde') !== -1) {
+            sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1] + '.');
+        }
         if (data.toString().indexOf('in the game') !== -1) {
-            console.log('test');
-            sendMessage(data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1], "");
+
+            sendMessage(data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' players online.');
+            playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
+            sendMessage(data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'))[0]);
+
         }
         logger.info (data.toString());
     });
 
-    // Write commands
+    /******************
+     * Write commands *
+     ******************/
+    // Get player count
     socket.on('getPlayers', function () {
         socket.write('listplayers\n');
     });
+
+    // Shutdown server
+    socket.on('shutdown', function () {
+        socket.write('shutdown\n');
+    });
+}
+
+function getPositions() {
+    let players = playerList;
+    let newPlayers = [];
+
+    console.log('TESTERRRR');
+    for (let i = 0; i < players.length; i+=2) {
+        let next = {};
+        let pos = players[i].match(new RegExp('pos=' + '(.*)' + ', rot'))[1];
+        let name = players[i].match(new RegExp(', ' + '(.*)' + ', pos'))[1];
+        pos = pos.replace(')', '');
+        pos = pos.replace('(', '');
+        pos = pos.replace(',', '');
+        pos = pos.replace(',', '');
+        next.x = pos.substring(1).split(' ')[0];
+        next.z = pos.substring(1).split(' ')[2];
+        next.name = name;
+        newPlayers.push(next);
+        console.log(next.x, next.z, next.name);
+    }
+
 }
 
 
@@ -84,6 +120,7 @@ function sendMessage (message) {
 initializeSocket();
 
 
+
 /* Command Input */
 bot.on('message', function (user, userId, channelId, message, evt) {
     if (channelId === auth.channel && message.substring(0, 1) === '$') {
@@ -91,16 +128,26 @@ bot.on('message', function (user, userId, channelId, message, evt) {
         let cmd = args[0];
 
         args = args.splice(1);
-        console.log(args);
-        sendMessage(channelId);
+        //console.log(args);
+
+        if (!socket.readable) {
+            initializeSocket();
+        }
 
         switch (cmd) {
             case 'help':
-                sendMessage('List of commands (proceeded by \'$\'):\nstart\nstatus');
+                sendMessage('List of commands (proceeded by \'$\'):\nstart\nstop\nstatus');
+                break;
+
+            case 'stop':
+                socket.emit('shutdown');
                 break;
 
             case 'players':
                 socket.emit('getPlayers');
+                setTimeout(function () {
+                    getPositions();
+                }, 1500);
                 break;
 
             /* Start the server if not already started */
