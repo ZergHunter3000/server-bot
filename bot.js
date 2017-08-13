@@ -121,7 +121,7 @@ initializeSocket();
 
 /* Command Input */
 bot.on('message', function (user, userId, channelId, message, evt) {
-    if (channelId === auth.channel && message.substring(0, 1) === '!') {
+    if (channelId === auth.channel && message.substring(0, 1) === '$') {
         let args = message.substring(1).split(' ');
         let cmd = args[0];
 
