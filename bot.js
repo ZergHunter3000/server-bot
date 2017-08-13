@@ -25,25 +25,22 @@ let bot = new Discord.Client({
 });
 
 bot.on('ready', function (evt) {
-    bot.setPresence(
-        {
-            status: 'online',
-            game: { name: '7 Days to Die' }
-        });
-
     logger.info('Connected');
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
-});
 
+    initializeSocket();
+});
 
 
 /* Telnet Socket Connections */
 initializeSocket = function () {
     socket = io.connect(auth.port, auth.host, function () {
+        setGameStatus(true);
         _initializeSocketListeners();
     })
         .on("error", function (err) {
+            setGameStatus(false);
             if (err.toString().indexOf('ECONNREFUSED') !== -1) {
                 logger.error('Error: ECONNREFUSED');
 
@@ -57,7 +54,7 @@ function _initializeSocketListeners() {
     // Login
     socket.on('data', function (data) {
         /******************
-         * Write commands *
+         * Data Listeners *
          ******************/
         // Enter credentials
         if (data.toString().indexOf('lease enter password:') !== -1) {
@@ -96,7 +93,7 @@ function getPositions() {
     let newPlayers = [];
 
     console.log('TESTERRRR');
-    for (let i = 0; i < players.length; i+=2) {
+    for (let i = 0; i < players.length; i += 2) {
         let next = {};
         let pos = players[i].match(new RegExp('pos=' + '(.*)' + ', rot'))[1];
         let name = players[i].match(new RegExp(', ' + '(.*)' + ', pos'))[1];
@@ -113,7 +110,6 @@ function getPositions() {
 }
 
 
-
 function sendMessage (message) {
     bot.sendMessage({
         to: auth.channel,
@@ -121,7 +117,21 @@ function sendMessage (message) {
     });
 }
 
-initializeSocket();
+function setGameStatus (online) {
+    if (online) {
+        bot.setPresence(
+            {
+                status: 'online',
+                game: { name: '7 Days to Die' }
+            });
+    } else {
+        bot.setPresence(
+            {
+                status: 'online',
+                game: { name: '' }
+            });
+    }
+}
 
 
 
@@ -147,6 +157,7 @@ bot.on('message', function (user, userId, channelId, message, evt) {
             case 'stop':
                 sendMessage('Shutting down server...');
                 socket.emit('shutdown');
+                setGameStatus(true);
                 break;
 
             /* Request # of online players */
@@ -157,19 +168,22 @@ bot.on('message', function (user, userId, channelId, message, evt) {
             /* Request server start if not already started */
             case 'start':
                 if (socket.readable) {
+                    setGameStatus(true);
                     sendMessage('Server is already running.');
                 } else {
                     sendMessage('Verifying server is offline...');
 
                     initializeSocket();
 
-                    setTimeout (function () {
+                    setTimeout(function () {
                         if (socket.readable) {
+                            setGameStatus(true);
                             sendMessage('Server is already running.');
                         } else {
+                            setGameStatus(false);
                             sendMessage('Starting server... (Please wait 20 seconds before giving any commands)');
 
-                            child_process.exec('D:\\runserver.bat', function(error, stdout, stderr) {
+                            child_process.exec('D:\\runserver.bat', function (error, stdout, stderr) {
                                 console.log(error, stdout, stderr);
                             });
 
@@ -178,9 +192,11 @@ bot.on('message', function (user, userId, channelId, message, evt) {
 
                                 setTimeout(function () {
                                     if (socket.readable) {
+                                        setGameStatus(true);
                                         sendMessage('Successfully started server.');
                                     } else {
-                                        sendMessage('Failed to start server.');
+                                        setGameStatus(false);
+                                        sendMessage('Failed to start server (type $status to verify).');
                                     }
                                 }, 10000);
                             }, 10000);
@@ -192,6 +208,7 @@ bot.on('message', function (user, userId, channelId, message, evt) {
             /* Request status of the server */
             case 'status':
                 if (socket.readable) {
+                    setGameStatus(true);
                     sendMessage('Server is running.');
                 } else {
                     sendMessage('Socket connection closed... reestablishing connection to server.');
@@ -200,8 +217,10 @@ bot.on('message', function (user, userId, channelId, message, evt) {
 
                     setTimeout(function () {
                         if (socket.readable) {
+                            setGameStatus(true);
                             sendMessage('Server is running.');
                         } else {
+                            setGameStatus(false);
                             sendMessage('Server is offline.');
                         }
                     }, 2000);
