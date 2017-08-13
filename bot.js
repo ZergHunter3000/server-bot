@@ -66,8 +66,6 @@ function _initializeSocketListeners() {
 
             sendMessage(data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' players online.');
             playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
-            sendMessage(data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'))[0]);
-
         }
         logger.info (data.toString());
     });
@@ -123,7 +121,7 @@ initializeSocket();
 
 /* Command Input */
 bot.on('message', function (user, userId, channelId, message, evt) {
-    if (channelId === auth.channel && message.substring(0, 1) === '$') {
+    if (channelId === auth.channel && message.substring(0, 1) === '!') {
         let args = message.substring(1).split(' ');
         let cmd = args[0];
 
@@ -145,9 +143,6 @@ bot.on('message', function (user, userId, channelId, message, evt) {
 
             case 'players':
                 socket.emit('getPlayers');
-                setTimeout(function () {
-                    getPositions();
-                }, 1500);
                 break;
 
             /* Start the server if not already started */
