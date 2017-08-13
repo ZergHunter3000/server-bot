@@ -8,6 +8,7 @@ let socket;
 let playerList;
 
 
+
 /* Configure Logger Settings */
 logger.remove(logger.transports.Console);
 logger.add(logger.transports.Console, {
@@ -24,6 +25,12 @@ let bot = new Discord.Client({
 });
 
 bot.on('ready', function (evt) {
+    bot.setPresence(
+        {
+            status: 'online',
+            game: { name: '7 Days to Die' }
+        });
+
     logger.info('Connected');
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
@@ -31,6 +38,7 @@ bot.on('ready', function (evt) {
 
 
 
+/* Telnet Socket Connections */
 initializeSocket = function () {
     socket = io.connect(auth.port, auth.host, function () {
         _initializeSocketListeners();
@@ -43,31 +51,30 @@ initializeSocket = function () {
                 logger.error('test', err.stack);
             }
         });
-
-    setTimeout (function () {
-        return socket.readable;
-    }, 4500);
 };
 
 function _initializeSocketListeners() {
     // Login
     socket.on('data', function (data) {
+        /******************
+         * Write commands *
+         ******************/
+        // Enter credentials
         if (data.toString().indexOf('lease enter password:') !== -1) {
             console.log('Entering credentials...');
             socket.write(auth.telnetPass + '\r\n');
         }
 
-        logger.info('~~~~~~Data Object~~~~~~');
-        //
+        // Alert wandering horde
         if (data.toString().indexOf('Spawning wandering horde') !== -1) {
             sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1] + '.');
         }
-        if (data.toString().indexOf('in the game') !== -1) {
 
+        // Display # of players online
+        if (data.toString().indexOf('in the game') !== -1) {
             sendMessage(data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' players online.');
             playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
         }
-        logger.info (data.toString());
     });
 
     /******************
@@ -103,7 +110,6 @@ function getPositions() {
         newPlayers.push(next);
         console.log(next.x, next.z, next.name);
     }
-
 }
 
 
@@ -126,26 +132,29 @@ bot.on('message', function (user, userId, channelId, message, evt) {
         let cmd = args[0];
 
         args = args.splice(1);
-        //console.log(args);
 
         if (!socket.readable) {
             initializeSocket();
         }
 
         switch (cmd) {
+            /* Request list of commands */
             case 'help':
-                sendMessage('List of commands (proceeded by \'$\'):\nstart\nstop\nstatus');
+                sendMessage('List of commands (proceeded by \'$\'):\nstart\nstop\nstatus\nplayers');
                 break;
 
+            /* Request server shutdown */
             case 'stop':
+                sendMessage('Shutting down server...');
                 socket.emit('shutdown');
                 break;
 
+            /* Request # of online players */
             case 'players':
                 socket.emit('getPlayers');
                 break;
 
-            /* Start the server if not already started */
+            /* Request server start if not already started */
             case 'start':
                 if (socket.readable) {
                     sendMessage('Server is already running.');
@@ -178,10 +187,9 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                         }
                     }, 6000);
                 }
-
                 break;
 
-            /* Return status of the server */
+            /* Request status of the server */
             case 'status':
                 if (socket.readable) {
                     sendMessage('Server is running.');
@@ -198,7 +206,6 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                         }
                     }, 2000);
                 }
-
                 break;
         }
     }
