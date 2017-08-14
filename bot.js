@@ -40,10 +40,12 @@ initializeSocket = function () {
         _initializeSocketListeners();
     })
         .on("error", function (err) {
-            setGameStatus(false);
+            setTimeout (function () {
+                setGameStatus(false);
+            }, 500);
+
             if (err.toString().indexOf('ECONNREFUSED') !== -1) {
                 logger.error('Error: ECONNREFUSED');
-
             } else {
                 logger.error('test', err.stack);
             }
@@ -160,95 +162,104 @@ function setGameStatus (online) {
 
 /* Command Input */
 bot.on('message', function (user, userId, channelId, message, evt) {
-    if (channelId === auth.channel && message.substring(0, 1) === '$') {
+    if (channelId === auth.channel && message.substring(0, 1) === '!') {
         let args = message.substring(1).split(' ');
         let cmd = args[0];
+        let delay = 0;
 
         args = args.splice(1);
 
         if (!socket.readable) {
+            delay = 1500;
             initializeSocket();
         }
 
-        switch (cmd) {
-            /* Request list of commands */
-            case 'help':
-                sendMessage('```css\nList of commands (proceeded by \'$\'):\nstart\nstop\nstatus\nplayers\n```');
-                break;
+        setTimeout(function () {
+            switch (cmd) {
+                /* Request list of commands */
+                case 'help':
+                    sendMessage('```css\nList of commands (proceeded by \'$\'):\nstart\nstop\nstatus\nplayers\n```');
+                    break;
 
-            /* Request server shutdown */
-            case 'stop':
-                sendMessage('```css\nShutting down server...\n```');
-                socket.emit('shutdown');
-                setGameStatus(true);
-                break;
+                /* Request server shutdown */
+                case 'stop':
+                    if (socket.readable) {
+                        sendMessage('```css\nShutting down server...\n```');
+                        socket.emit('shutdown');
+                        setGameStatus(false);
+                    } else {
+                        sendMessage('```css\nServer is already offline.\n```');
+                        setGameStatus(false);
+                    }
+                    break;
 
-            /* Request # of online players */
-            case 'players':
-                socket.emit('getPlayers');
-                break;
+                /* Request # of online players */
+                case 'players':
+                    socket.emit('getPlayers');
+                    break;
 
-            /* Request server start if not already started */
-            case 'start':
-                if (socket.readable) {
-                    setGameStatus(true);
-                    sendMessage('```css\nServer is already running.\n```');
-                } else {
-                    sendMessage('```css\nVerifying server is offline...\n```');
+                /* Request server start if not already started */
+                case 'start':
+                    if (socket.readable) {
+                        setGameStatus(true);
+                        sendMessage('```css\nServer is already running.\n```');
+                    } else {
+                        sendMessage('```css\nVerifying server is offline...\n```');
 
-                    initializeSocket();
+                        initializeSocket();
 
-                    setTimeout(function () {
-                        if (socket.readable) {
-                            setGameStatus(true);
-                            sendMessage('```css\nServer is already running.\n```');
-                        } else {
-                            setGameStatus(false);
-                            sendMessage('```css\nStarting server... (Please wait 20 seconds before giving any commands)\n```');
+                        setTimeout(function () {
+                            if (socket.readable) {
+                                setGameStatus(true);
+                                sendMessage('```css\nServer is already running.\n```');
+                            } else {
+                                setGameStatus(false);
+                                sendMessage('```css\nStarting server... (Please wait 20 seconds before giving any commands)\n```');
 
-                            child_process.exec('D:\\runserver.bat', function (error, stdout, stderr) {
-                                console.log(error, stdout, stderr);
-                            });
-
-                            setTimeout(function () {
-                                initializeSocket();
+                                child_process.exec('D:\\runserver.bat', function (error, stdout, stderr) {
+                                    console.log(error, stdout, stderr);
+                                });
 
                                 setTimeout(function () {
-                                    if (socket.readable) {
-                                        setGameStatus(true);
-                                        sendMessage('```css\nSuccessfully started server.\n```');
-                                    } else {
-                                        setGameStatus(false);
-                                        sendMessage('```css\nFailed to start server (type $status to verify).\n```');
-                                    }
-                                }, 8000);
-                            }, 12000);
-                        }
-                    }, 6000);
-                }
-                break;
+                                    initializeSocket();
 
-            /* Request status of the server */
-            case 'status':
-                if (socket.readable) {
-                    setGameStatus(true);
-                    sendMessage('```css\nServer is running.\n```');
-                } else {
-                    sendMessage('```css\nSocket connection closed... reestablishing connection to server.\n```');
+                                    setTimeout(function () {
+                                        if (socket.readable) {
+                                            setGameStatus(true);
+                                            sendMessage('```css\nSuccessfully started server.\n```');
+                                        } else {
+                                            setGameStatus(false);
+                                            sendMessage('```css\nFailed to start server (type $status to verify).\n```');
+                                        }
+                                    }, 8000);
+                                }, 12000);
+                            }
+                        }, 6000);
+                    }
+                    break;
 
-                    initializeSocket();
+                /* Request status of the server */
+                case 'status':
+                    if (socket.readable) {
+                        setGameStatus(true);
+                        sendMessage('```css\nServer is running.\n```');
+                    } else {
+                        sendMessage('```css\nSocket connection closed... reestablishing connection to server.\n```');
 
-                    setTimeout(function () {
-                        if (socket.readable) {
-                            setGameStatus(true);
-                            sendMessage('```css\nServer is running.\n```');
-                        } else {
-                            setGameStatus(false);
-                            sendMessage('```css\nServer is offline.\n```');
-                        }
-                    }, 2000);
-                }
-                break;
-        }
+                        initializeSocket();
+
+                        setTimeout(function () {
+                            if (socket.readable) {
+                                setGameStatus(true);
+                                sendMessage('```css\nServer is running.\n```');
+                            } else {
+                                setGameStatus(false);
+                                sendMessage('```css\nServer is offline.\n```');
+                            }
+                        }, 2000);
+                    }
+                    break;
+            }
+        }, delay);
     }
 });
