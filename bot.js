@@ -47,7 +47,7 @@ initializeSocket = function () {
             if (err.toString().indexOf('ECONNREFUSED') !== -1) {
                 logger.error('Error: ECONNREFUSED');
             } else {
-                logger.error('test', err.stack);
+                logger.error(err.stack);
             }
         });
 };
@@ -67,32 +67,41 @@ function _initializeSocketListeners() {
 
         // Alert wandering horde towards player
         if (data.toString().indexOf('Spawning wandering horde') !== -1) {
-            sendMessage('```diff\n-Warning:  Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1] + '.\n```');
+            sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1] + '.', 'warning');
         }
 
         // Alert scout-triggered horde spawned
         if (data.toString().indexOf('Scout-Triggered Horde Finished') !== -1) {
-            sendMessage('```diff\n-Warning:  A \'Scout-Triggered\' horde has just finishing spawning mobs.\n```');
+            sendMessage('A \'Scout-Triggered\' horde has just finishing spawning mobs.', 'warning');
         }
 
         // Alert scout horde spawned
         if (data.toString().indexOf('Scout-Triggered Horde Finished') !== -1) {
-            sendMessage('```diff\n-Warning:  A \'Scout\' horde has just finishing spawning mobs.\n```');
+            sendMessage('A \'Scout\' horde has just finishing spawning mobs.', 'warning');
         }
 
         // Display # of players online
         if (data.toString().indexOf('in the game') !== -1) {
-
-            sendMessage('```css\nThere are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' players online.\n```');
+            sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
             playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
-            // setTimeout(function () {
-            //     getPositions();
-            // }, 2500);
+        }
+
+        // Display # of players online
+        if (data.toString().indexOf('Spawned supply crate') !== -1) {
+            playerList = null;
+            socket.emit('getPlayers');
+            setTimeout(function () {
+                if (playerList !== null) {
+                    let playerDetails = getPlayerDetails();
+                    let airDropDetails = getAirDropDetails(data.toString().match(new RegExp('crate @ ' + '(.*)' + ''))[1]);
+                    sendMessage('Airdrop spawned near: ' + findClosest(playerDetails, airDropDetails).name, 'info');
+                }
+            }, 3500);
         }
     });
 
 
-    //Spawned supply crate @ ((-255.5, 206.2, 1813.0))
+    //Spawned supply crate @ ((1801.0, 191.1, 15.6)) X | Z | Y
 
 
     /******************
@@ -114,11 +123,11 @@ function _initializeSocketListeners() {
     });
 }
 
-function getPositions() {
+function getPlayerDetails() {
     let players = playerList;
+    playerList = null;
     let newPlayers = [];
 
-    console.log('TESTERRRR');
     for (let i = 0; i < players.length; i += 2) {
         let next = {};
         let pos = players[i].match(new RegExp('pos=' + '(.*)' + ', rot'))[1];
@@ -127,33 +136,83 @@ function getPositions() {
         pos = pos.replace('(', '');
         pos = pos.replace(',', '');
         pos = pos.replace(',', '');
-        next.x = pos.substring(1).split(' ')[0];
-        next.y = pos.substring(1).split(' ')[2];
+        next.x = parseInt(pos.split(' ')[0]);
+        next.y = parseInt(pos.split(' ')[2]);
         next.name = name;
         newPlayers.push(next);
         console.log(next.x, next.y, next.name);
     }
+
+    return newPlayers;
 }
 
-function sendMessage (message) {
-    bot.sendMessage({
-        to: auth.channel,
-        message: message
-    });
+function getAirDropDetails(data) {
+    let details = {};
+    // data.replace (/abc/g, ''); TODO IMPLEMENT
+    data = data.replace('(', '');
+    data = data.replace('(', '');
+    data = data.replace(')', '');
+    data = data.replace(')', '');
+    data = data.replace(',', '');
+    data = data.replace(',', '');
+
+    details.x = parseInt(data.split(' ')[0]);
+    details.y = parseInt(data.split(' ')[2]);
+
+    return details;
 }
 
-function setGameStatus (online) {
+function findClosest(players, airdrop) {
+    let closestPlayer = {};
+
+    closestPlayer.distance = Math.sqrt(Math.pow(players[0].x - airdrop.x, 2) + Math.pow(players[0].y - airdrop.y, 2));
+    for (let p of players) {
+        console.log(p);
+        let d = Math.sqrt(Math.pow(p.x - airdrop.x, 2) + Math.pow(p.y - airdrop.y, 2));
+        if (d <= closestPlayer.distance) {
+            closestPlayer.distance = d;
+            closestPlayer.name = p.name;
+            closestPlayer.x = p.x;
+            closestPlayer.y = p.y;
+        }
+    }
+    console.log(closestPlayer);
+    return closestPlayer;
+}
+
+//TODO IMPLEMENT GET DIRECTION NW/SW/ETC
+function getDirection(player) {
+
+}
+
+
+
+function sendMessage (message, type) {
+    if (type === 'info') {
+        bot.sendMessage({
+            to: auth.channel,
+            message: '```css\n' + message + '\n```'
+        });
+    } else if (type === 'warning') {
+        bot.sendMessage({
+            to: auth.channel,
+            message: '```diff\n-Warning:  ' + message + '\n```'
+        });
+    }
+}
+
+function setGameStatus(online) {
     if (online) {
         bot.setPresence(
             {
                 status: 'online',
-                game: { name: '7 Days to Die' }
+                game: {name: '7 Days to Die'}
             });
     } else {
         bot.setPresence(
             {
                 status: 'online',
-                game: { name: '' }
+                game: {name: ''}
             });
     }
 }
@@ -162,7 +221,7 @@ function setGameStatus (online) {
 
 /* Command Input */
 bot.on('message', function (user, userId, channelId, message, evt) {
-    if (channelId === auth.channel && message.substring(0, 1) === '!') {
+    if (channelId === auth.channel && message.substring(0, 1) === '$') {
         let args = message.substring(1).split(' ');
         let cmd = args[0];
         let delay = 0;
@@ -178,17 +237,17 @@ bot.on('message', function (user, userId, channelId, message, evt) {
             switch (cmd) {
                 /* Request list of commands */
                 case 'help':
-                    sendMessage('```css\nList of commands (proceeded by \'$\'):\nstart\nstop\nstatus\nplayers\n```');
+                    sendMessage('List of commands (proceeded by \'$\'):\nstart\nstop\nstatus\nplayers', 'info');
                     break;
 
                 /* Request server shutdown */
                 case 'stop':
                     if (socket.readable) {
-                        sendMessage('```css\nShutting down server...\n```');
+                        sendMessage('Shutting down server...', 'info');
                         socket.emit('shutdown');
                         setGameStatus(false);
                     } else {
-                        sendMessage('```css\nServer is already offline.\n```');
+                        sendMessage('Server is already offline.', 'info');
                         setGameStatus(false);
                     }
                     break;
@@ -202,19 +261,19 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                 case 'start':
                     if (socket.readable) {
                         setGameStatus(true);
-                        sendMessage('```css\nServer is already running.\n```');
+                        sendMessage('Server is already running.', 'info');
                     } else {
-                        sendMessage('```css\nVerifying server is offline...\n```');
+                        sendMessage('Verifying server is offline...', 'info');
 
                         initializeSocket();
 
                         setTimeout(function () {
                             if (socket.readable) {
                                 setGameStatus(true);
-                                sendMessage('```css\nServer is already running.\n```');
+                                sendMessage('Server is already running.', 'info');
                             } else {
                                 setGameStatus(false);
-                                sendMessage('```css\nStarting server... (Please wait 20 seconds before giving any commands)\n```');
+                                sendMessage('Starting server... (Please wait 30 seconds before giving any commands)', 'info');
 
                                 child_process.exec('D:\\runserver.bat', function (error, stdout, stderr) {
                                     console.log(error, stdout, stderr);
@@ -226,13 +285,13 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                                     setTimeout(function () {
                                         if (socket.readable) {
                                             setGameStatus(true);
-                                            sendMessage('```css\nSuccessfully started server.\n```');
+                                            sendMessage('Successfully started server.', 'info');
                                         } else {
                                             setGameStatus(false);
-                                            sendMessage('```css\nFailed to start server (type $status to verify).\n```');
+                                            sendMessage('Failed to start server (type $status to verify).', 'info');
                                         }
                                     }, 8000);
-                                }, 12000);
+                                }, 22000);
                             }
                         }, 6000);
                     }
@@ -242,19 +301,19 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                 case 'status':
                     if (socket.readable) {
                         setGameStatus(true);
-                        sendMessage('```css\nServer is running.\n```');
+                        sendMessage('Server is running.', 'info');
                     } else {
-                        sendMessage('```css\nSocket connection closed... reestablishing connection to server.\n```');
+                        sendMessage('Socket connection closed... reestablishing connection to server.', 'info');
 
                         initializeSocket();
 
                         setTimeout(function () {
                             if (socket.readable) {
                                 setGameStatus(true);
-                                sendMessage('```css\nServer is running.\n```');
+                                sendMessage('Server is running.', 'info');
                             } else {
                                 setGameStatus(false);
-                                sendMessage('```css\nServer is offline.\n```');
+                                sendMessage('Server is offline.', 'info');
                             }
                         }, 2000);
                     }
