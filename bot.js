@@ -46,7 +46,7 @@ initializeSocket = function () {
             }, 500);
 
             if (err.toString().indexOf('ECONNREFUSED') !== -1) {
-                logger.error('Error: ECONNREFUSED');
+                logger.error('Error: [ECONNREFUSED] Can\'t connect to Telnet');
             } else {
                 logger.error(err.stack);
             }
@@ -62,23 +62,18 @@ function _initializeSocketListeners() {
 
         // Enter credentials
         if (data.toString().indexOf('lease enter password:') !== -1) {
-            logger.info('Entering credentials...');
+            logger.info('~| Entering credentials... |~');
             socket.emit('inputPass');
         }
 
         // Alert wandering horde towards player
         if (data.toString().indexOf('Spawning wandering horde') !== -1) {
-            sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1] + '.', 'warning');
+            sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1], 'warning');
         }
 
         // Alert scout-triggered horde spawned
         if (data.toString().indexOf('Scout-Triggered Horde Finished') !== -1) {
-            sendMessage('A \'Scout-Triggered\' horde has just finishing spawning mobs.', 'warning');
-        }
-
-        // Alert scout horde spawned
-        if (data.toString().indexOf('Scout-Triggered Horde Finished') !== -1) {
-            sendMessage('A \'Scout\' horde has just finishing spawning mobs.', 'warning');
+            sendMessage('A \'Scout-Triggered\' horde has just finishing spawning mobs', 'warning');
         }
 
         // Display # of players online
@@ -93,7 +88,7 @@ function _initializeSocketListeners() {
 
         // Notify airdrop spawned
         if (data.toString().indexOf('Spawned supply crate') !== -1) {
-            sendMessage('Airdrop incoming, calculating nearest player...', 'info');
+            sendMessage('Airdrop incoming; calculating nearest player...', 'info');
             playerList = null;
             airdropToggle = true;
             socket.emit('getPlayers');
