@@ -6,10 +6,11 @@ let child_process = require('child_process');
 
 let socket;
 let playerList;
+let airdropToggle = false;
 
 
 
-/* Configure Logger Settings */
+/** Configure Logger Settings **/
 logger.remove(logger.transports.Console);
 logger.add(logger.transports.Console, {
     colorize: true
@@ -18,7 +19,7 @@ logger.level = 'debug';
 
 
 
-/* Initialize Discord Bot */
+/** Initialize Discord Bot **/
 let bot = new Discord.Client({
     token: auth.token,
     autorun: true
@@ -33,7 +34,7 @@ bot.on('ready', function (evt) {
 
 
 
-/* Telnet Socket Connections */
+/** Telnet Socket Connections **/
 initializeSocket = function () {
     socket = io.connect(auth.port, auth.host, function () {
         setGameStatus(true);
@@ -53,9 +54,9 @@ initializeSocket = function () {
 };
 
 function _initializeSocketListeners() {
-    /******************
-     * Data Listeners *
-     ******************/
+    /*****************
+     * Data Listener *
+     *****************/
     socket.on('data', function (data) {
         logger.info(data.toString());
 
@@ -82,30 +83,26 @@ function _initializeSocketListeners() {
 
         // Display # of players online
         if (data.toString().indexOf('in the game') !== -1) {
-            sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
-            playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
+            if (airdropToggle === false) {
+                sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
+            } else {
+                playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
+                airdropToggle = false;
+            }
         }
 
-        // Display # of players online
+        // Notify airdrop spawned
         if (data.toString().indexOf('Spawned supply crate') !== -1) {
+            sendMessage('Airdrop incoming, calculating nearest player...', 'info');
             playerList = null;
+            airdropToggle = true;
             socket.emit('getPlayers');
-            setTimeout(function () {
-                if (playerList !== null) {
-                    let playerDetails = getPlayerDetails();
-                    let airDropDetails = getAirDropDetails(data.toString().match(new RegExp('crate @ ' + '(.*)' + ''))[1]);
-                    sendMessage('Airdrop spawned near: ' + findClosest(playerDetails, airDropDetails).name, 'info');
-                }
-            }, 3500);
+            socket.emit('calculateAirdropPing', data);
         }
     });
 
-
-    //Spawned supply crate @ ((1801.0, 191.1, 15.6)) X | Z | Y
-
-
     /******************
-     * Write commands *
+     * Write Commands *
      ******************/
     // Input password
     socket.on('inputPass', function () {
@@ -115,18 +112,44 @@ function _initializeSocketListeners() {
     // Get player count
     socket.on('getPlayers', function () {
         socket.write('listplayers\r\n');
+
     });
 
     // Shutdown server
     socket.on('shutdown', function () {
         socket.write('shutdown\r\n');
     });
+
+    /**************
+     * Ping Pongs *
+     **************/
+    socket.on('calculateAirdropPing', function (data) {
+        if (playerList !== null) {
+            let playerDetails = getPlayerDetails();
+            let airDropDetails = getAirDropDetails(data.toString().match(new RegExp('crate @ ' + '(.*)' + ''))[1]);
+            let closest = findClosest(playerDetails, airDropDetails);
+            sendMessage('Airdrop spawned ' + getDirection(closest, airDropDetails) + ' of ' + closest.name + '.', 'info');
+        } else {
+            socket.emit('calculateAirdropPong', data);
+        }
+    });
+
+    socket.on('calculateAirdropPong', function (data) {
+        setTimeout(function () {
+            socket.emit('calculateAirdropPing', data);
+        }, 1000);
+    })
 }
 
+
+
+/** General Functions/Calculations **/
 function getPlayerDetails() {
+    logger.info('~| Calculating player details... |~');
+
     let players = playerList;
-    playerList = null;
     let newPlayers = [];
+    playerList = null;
 
     for (let i = 0; i < players.length; i += 2) {
         let next = {};
@@ -140,13 +163,14 @@ function getPlayerDetails() {
         next.y = parseInt(pos.split(' ')[2]);
         next.name = name;
         newPlayers.push(next);
-        console.log(next.x, next.y, next.name);
+        logger.info('~| Player calculated with details: ' + next.x, next.y, next.name + ' |~');
     }
 
     return newPlayers;
 }
 
 function getAirDropDetails(data) {
+    logger.info('~| Calculating airdrop details... |~');
     let details = {};
     // data.replace (/abc/g, ''); TODO IMPLEMENT
     data = data.replace('(', '');
@@ -159,15 +183,18 @@ function getAirDropDetails(data) {
     details.x = parseInt(data.split(' ')[0]);
     details.y = parseInt(data.split(' ')[2]);
 
+    logger.info('~| Airdrop calculated with details: ' + details.x, details.y + ' |~');
+
     return details;
 }
 
 function findClosest(players, airdrop) {
-    let closestPlayer = {};
+    logger.info('~| Calculating closest player... |~');
 
+    let closestPlayer = {};
     closestPlayer.distance = Math.sqrt(Math.pow(players[0].x - airdrop.x, 2) + Math.pow(players[0].y - airdrop.y, 2));
+
     for (let p of players) {
-        console.log(p);
         let d = Math.sqrt(Math.pow(p.x - airdrop.x, 2) + Math.pow(p.y - airdrop.y, 2));
         if (d <= closestPlayer.distance) {
             closestPlayer.distance = d;
@@ -176,16 +203,30 @@ function findClosest(players, airdrop) {
             closestPlayer.y = p.y;
         }
     }
-    console.log(closestPlayer);
+
+    logger.info('~| Calculated closest player with details: ' + closestPlayer.name, closestPlayer.x, closestPlayer.y, closestPlayer.distance + ' |~');
+
     return closestPlayer;
 }
 
-//TODO IMPLEMENT GET DIRECTION NW/SW/ETC
-function getDirection(player) {
+//TODO Improve calculation
+function getDirection(player, airdrop) {
+    let direction = '';
 
+    if (airdrop.y > player.y) {
+        direction += 'North';
+    } else {
+        direction += 'South';
+    }
+
+    if (airdrop.x > player.x) {
+        direction += 'East';
+    } else {
+        direction += 'West';
+    }
+
+    return direction;
 }
-
-
 
 function sendMessage (message, type) {
     if (type === 'info') {
@@ -219,7 +260,7 @@ function setGameStatus(online) {
 
 
 
-/* Command Input */
+/** Command Input **/
 bot.on('message', function (user, userId, channelId, message, evt) {
     if (channelId === auth.channel && message.substring(0, 1) === '$') {
         let args = message.substring(1).split(' ');
@@ -235,12 +276,12 @@ bot.on('message', function (user, userId, channelId, message, evt) {
 
         setTimeout(function () {
             switch (cmd) {
-                /* Request list of commands */
+                // Request list of commands
                 case 'help':
                     sendMessage('List of commands (proceeded by \'$\'):\nstart\nstop\nstatus\nplayers', 'info');
                     break;
 
-                /* Request server shutdown */
+                // Request server shutdown
                 case 'stop':
                     if (socket.readable) {
                         sendMessage('Shutting down server...', 'info');
@@ -252,12 +293,12 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                     }
                     break;
 
-                /* Request # of online players */
+                // Request # of online players
                 case 'players':
                     socket.emit('getPlayers');
                     break;
 
-                /* Request server start if not already started */
+                // Request server start if not already started
                 case 'start':
                     if (socket.readable) {
                         setGameStatus(true);
@@ -273,7 +314,7 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                                 sendMessage('Server is already running.', 'info');
                             } else {
                                 setGameStatus(false);
-                                sendMessage('Starting server... (Please wait 30 seconds before giving any commands)', 'info');
+                                sendMessage('Starting server... (Please wait 35 seconds before giving any commands)', 'info');
 
                                 child_process.exec('D:\\runserver.bat', function (error, stdout, stderr) {
                                     console.log(error, stdout, stderr);
@@ -290,14 +331,14 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                                             setGameStatus(false);
                                             sendMessage('Failed to start server (type $status to verify).', 'info');
                                         }
-                                    }, 8000);
-                                }, 22000);
+                                    }, 7000);
+                                }, 28000);
                             }
                         }, 6000);
                     }
                     break;
 
-                /* Request status of the server */
+                // Request status of the server
                 case 'status':
                     if (socket.readable) {
                         setGameStatus(true);
