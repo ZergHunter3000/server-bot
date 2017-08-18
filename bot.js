@@ -241,14 +241,21 @@ function setGameStatus(online) {
     if (online) {
         bot.setPresence(
             {
-                status: 'online',
-                game: {name: '7 Days to Die'}
+                status: 'away',
+                game:
+                    {
+                        name: "7 Days to Die",
+                        type: 0
+                    }
             });
     } else {
         bot.setPresence(
             {
-                status: 'online',
-                game: {name: ''}
+                game:
+                    {
+                        name: '',
+                        type: 0
+                    }
             });
     }
 }
