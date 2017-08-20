@@ -15,7 +15,7 @@ module.exports = {
         this.x = coordinates.x;
         this.y = coordinates.y;
 
-        logger.info('| Airdrop created with coordinates (' + this.x + ', ' + this.y + ') |')
+        logger.info('-| Airdrop created with coordinates (' + this.x + ', ' + this.y + ') |-')
     }
 };
 
@@ -54,12 +54,12 @@ function _getAirDropDetails(data) {
 }
 
 function _findClosest(players, airdrop) {
-    console.log('SUPERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\n', players, 'SUPERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\n');
     let closestPlayer = {};
+    let d;
     closestPlayer.distance = Math.sqrt(Math.pow(players[0].x - airdrop.x, 2) + Math.pow(players[0].y - airdrop.y, 2));
 
     for (let p of players) {
-        let d = Math.sqrt(Math.pow(p.x - airdrop.x, 2) + Math.pow(p.y - airdrop.y, 2));
+        d = Math.sqrt(Math.pow(p.x - airdrop.x, 2) + Math.pow(p.y - airdrop.y, 2));
         if (d <= closestPlayer.distance) {
             closestPlayer.distance = d;
             closestPlayer.name = p.name;

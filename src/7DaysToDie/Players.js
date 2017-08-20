@@ -5,13 +5,12 @@ module.exports = {
         this._getPlayers = _getPlayers;
         this.players = this._getPlayers(data);
 
-        logger.info('| Current player list calculated as: ' + this.players + ' |');
+        logger.info('-| Current player list calculated as: ' + this.players + ' |-');
     }
 };
 
 function _getPlayers(data) {
     let players = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
-    console.log('TEST', players);
     let currentPlayers = [];
     let next;
     let name;
@@ -33,6 +32,5 @@ function _getPlayers(data) {
         currentPlayers.push(next);
     }
 
-    console.log('TESTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT', currentPlayers);
     return currentPlayers;
 }

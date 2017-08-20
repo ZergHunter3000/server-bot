@@ -71,12 +71,12 @@ function _initializeSocketListeners() {
 
         // Alert wandering horde towards player
         if (data.toString().indexOf('Spawning wandering horde') !== -1) {
-            sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1], 'warning');
+            sendMessage('Wandering horde spawned and moving towards: ' + data.toString().match(new RegExp('name=(.*), id'))[1], 'warning', true);
         }
 
         // Alert scout-triggered horde spawned
         if (data.toString().indexOf('Scout-Triggered Horde Finished') !== -1) {
-            sendMessage('A \'Scout-Triggered\' horde has just finishing spawning mobs', 'warning');
+            sendMessage('A \'Scout-Triggered\' horde has just finishing spawning mobs', 'warning', true);
         }
 
         // Display # of players online
@@ -91,7 +91,7 @@ function _initializeSocketListeners() {
 
         // Notify airdrop spawned
         if (data.toString().indexOf('Spawned supply crate') !== -1) {
-            sendMessage('Airdrop incoming; calculating nearest player...', 'info');
+            sendMessage('Airdrop incoming; calculating nearest player...', 'info', true);
             playersData = null;
             airdropToggle = true;
             socket.emit('getPlayers');
@@ -127,7 +127,7 @@ function _initializeSocketListeners() {
             let airdrop = new Airdrop.Airdrop(data, logger);
             let currentPlayers = new Players.Players(playersData, logger);
             let closest = airdrop.findClosest(currentPlayers.players, airdrop);
-            sendMessage('Airdrop spawned ' + airdrop.getPlayerDirection(closest, airdrop) + ' of ' + closest.name + '.', 'info');
+            sendMessage('Airdrop spawned ' + airdrop.getPlayerDirection(closest, airdrop) + ' of ' + closest.name + '.', 'info', true);
         } else {
             socket.emit('calculateAirdropPong', data);
         }
@@ -166,7 +166,7 @@ function _initializeSocketListeners() {
 
 
 /** General Functions/Calculations **/
-function sendMessage (message, type) {
+function sendMessage (message, type, say = false) {
     if (type === 'info') {
         bot.sendMessage({
             to: auth.channel,
@@ -177,6 +177,10 @@ function sendMessage (message, type) {
             to: auth.channel,
             message: '```diff\n-Warning:  ' + message + '\n```'
         });
+    }
+
+    if (say) {
+        socket.write('say "' + message + '"\r\n')
     }
 }
 
@@ -207,7 +211,7 @@ function setGameStatus(online) {
 
 /** Command Input **/
 bot.on('message', function (user, userId, channelId, message, evt) {
-    if (channelId === auth.channel && message.substring(0, 1) === '!') {
+    if (channelId === auth.channel && message.substring(0, 1) === '$') {
         let args = message.substring(1).split(' ');
         let cmd = args[0];
         let delay = 0;
@@ -229,7 +233,7 @@ bot.on('message', function (user, userId, channelId, message, evt) {
                 // Request server shutdown
                 case 'stop':
                     if (socket.readable) {
-                        sendMessage('Shutting down server...', 'info');
+                        sendMessage('Shutting down server...', 'info', true);
                         socket.emit('shutdown');
                         setGameStatus(false);
                     } else {
