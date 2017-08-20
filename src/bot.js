@@ -1,12 +1,14 @@
 let Discord       = require('discord.io');
 let logger        = require('winston');
-let auth          = require('./auth.json');
+let auth          = require('../auth.json');
 let io            = require('net');
 let child_process = require('child_process');
-let Airdrop       = require('./src/Airdrop.js');
+
+let Airdrop       = require('./7DaysToDie/Airdrop.js');
+let Players       = require('./7DaysToDie/Players.js');
 
 let socket;
-let playerList;
+let playersData;
 let airdropToggle = false;
 
 
@@ -63,7 +65,7 @@ function _initializeSocketListeners() {
 
         // Enter credentials
         if (data.toString().indexOf('lease enter password:') !== -1) {
-            logger.info('~| Entering credentials... |~');
+            logger.info('| Entering credentials... |');
             socket.emit('inputPass');
         }
 
@@ -82,7 +84,7 @@ function _initializeSocketListeners() {
             if (airdropToggle === false) {
                 sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
             } else {
-                playerList = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
+                playersData = data; //= data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
                 airdropToggle = false;
             }
         }
@@ -90,7 +92,7 @@ function _initializeSocketListeners() {
         // Notify airdrop spawned
         if (data.toString().indexOf('Spawned supply crate') !== -1) {
             sendMessage('Airdrop incoming; calculating nearest player...', 'info');
-            playerList = null;
+            playersData = null;
             airdropToggle = true;
             socket.emit('getPlayers');
             socket.emit('calculateAirdropPing', data);
@@ -121,10 +123,10 @@ function _initializeSocketListeners() {
      **************/
     // Air Drop
     socket.on('calculateAirdropPing', function (data) {
-        if (playerList !== null) {
+        if (playersData !== null) {
             let airdrop = new Airdrop.Airdrop(data, logger);
-            let playerDetails = getPlayerDetails();
-            let closest = airdrop.findClosest(playerDetails, airdrop);
+            let currentPlayers = new Players.Players(playersData, logger);
+            let closest = airdrop.findClosest(currentPlayers.players, airdrop);
             sendMessage('Airdrop spawned ' + airdrop.getPlayerDirection(closest, airdrop) + ' of ' + closest.name + '.', 'info');
         } else {
             socket.emit('calculateAirdropPong', data);
@@ -164,31 +166,6 @@ function _initializeSocketListeners() {
 
 
 /** General Functions/Calculations **/
-function getPlayerDetails() {
-    logger.info('~| Calculating player details... |~');
-
-    let players = playerList;
-    let newPlayers = [];
-    playerList = null;
-
-    for (let i = 0; i < players.length; i += 2) {
-        let next = {};
-        let pos = players[i].match(new RegExp('pos=' + '(.*)' + ', rot'))[1];
-        let name = players[i].match(new RegExp(', ' + '(.*)' + ', pos'))[1];
-        pos = pos.replace(')', '');
-        pos = pos.replace('(', '');
-        pos = pos.replace(',', '');
-        pos = pos.replace(',', '');
-        next.x = parseInt(pos.split(' ')[0]);
-        next.y = parseInt(pos.split(' ')[2]);
-        next.name = name;
-        newPlayers.push(next);
-        logger.info('~| Player calculated with details: ' + next.x, next.y, next.name + ' |~');
-    }
-
-    return newPlayers;
-}
-
 function sendMessage (message, type) {
     if (type === 'info') {
         bot.sendMessage({

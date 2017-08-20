@@ -54,6 +54,7 @@ function _getAirDropDetails(data) {
 }
 
 function _findClosest(players, airdrop) {
+    console.log('SUPERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\n', players, 'SUPERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\n');
     let closestPlayer = {};
     closestPlayer.distance = Math.sqrt(Math.pow(players[0].x - airdrop.x, 2) + Math.pow(players[0].y - airdrop.y, 2));
 
