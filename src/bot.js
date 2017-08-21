@@ -33,12 +33,13 @@ bot.on('ready', function (evt) {
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
     initializeSocket();
+    cycleCheckSocket();
 });
 
 
 
 /** Telnet Socket Connections **/
-initializeSocket = function () {
+function initializeSocket () {
     socket = io.connect(auth.port, auth.host, function () {
         setGameStatus(true);
         _initializeSocketListeners();
@@ -54,7 +55,7 @@ initializeSocket = function () {
                 logger.error(err.stack);
             }
         });
-};
+}
 
 function _initializeSocketListeners() {
     /*****************
@@ -163,6 +164,15 @@ function _initializeSocketListeners() {
     // })
 }
 
+function cycleCheckSocket() {
+    setTimeout(function () {
+        if (!socket.readable) {
+            initializeSocket();
+        }
+        cycleCheckSocket();
+    }, 600000);
+}
+
 
 
 /** General Functions/Calculations **/
@@ -187,23 +197,12 @@ function sendMessage (message, type, say = false) {
 function setGameStatus(online) {
     if (online) {
         bot.setPresence(
-            {
-                status: 'away',
-                game:
-                    {
-                        name: "7 Days to Die",
-                        type: 0
-                    }
-            });
+            {game: {name: '7 Days to Die', type: 0}}
+        );
     } else {
         bot.setPresence(
-            {
-                game:
-                    {
-                        name: '',
-                        type: 0
-                    }
-            });
+            {idle_since: 10, game: {name: '', type: 0}}
+        );
     }
 }
 
