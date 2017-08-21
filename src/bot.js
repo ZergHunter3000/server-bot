@@ -6,6 +6,7 @@ let child_process = require('child_process');
 
 let Airdrop       = require('./7DaysToDie/Airdrop.js');
 let Players       = require('./7DaysToDie/Players.js');
+let usermap       = require('./usermap.json');
 
 let socket;
 let playersData;
@@ -197,7 +198,7 @@ function sendMessage (message, type, say = false) {
 function setGameStatus(online) {
     if (online) {
         bot.setPresence(
-            {game: {name: '7 Days to Die', type: 0}}
+            {idle_since: null, game: {name: '7 Days to Die', type: 0}}
         );
     } else {
         bot.setPresence(
@@ -210,7 +211,7 @@ function setGameStatus(online) {
 
 /** Command Input **/
 bot.on('message', function (user, userId, channelId, message, evt) {
-    if (channelId === auth.channel && message.substring(0, 1) === '$') {
+    if (userId in usermap.users && channelId === auth.channel && message.substring(0, 1) === '$') {
         let args = message.substring(1).split(' ');
         let cmd = args[0];
         let delay = 0;
