@@ -84,6 +84,8 @@ function _initializeSocketListeners() {
         // Display # of players online
         if (data.toString().indexOf('in the game') !== -1) {
             if (airdropToggle === false) {
+                playersData = data;
+                let currentPlayers = new Players.Players(playersData, logger);
                 sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
             } else {
                 playersData = data; //= data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
@@ -125,9 +127,10 @@ function _initializeSocketListeners() {
      **************/
     // Air Drop
     socket.on('calculateAirdropPing', function (data) {
-        if (playersData !== null) {
+        let tempData = playersData;
+        if (tempData !== null) {
             let airdrop = new Airdrop.Airdrop(data, logger);
-            let currentPlayers = new Players.Players(playersData, logger);
+            let currentPlayers = new Players.Players(tempData, logger);
             let closest = airdrop.findClosest(currentPlayers.players, airdrop);
             sendMessage('Airdrop spawned ' + airdrop.getPlayerDirection(closest, airdrop) + ' of ' + closest.name + '.', 'info', true);
         } else {
@@ -197,13 +200,9 @@ function sendMessage (message, type, say = false) {
 
 function setGameStatus(online) {
     if (online) {
-        bot.setPresence(
-            {idle_since: null, game: {name: '7 Days to Die', type: 0}}
-        );
+        bot.setPresence({idle_since: null, game: {name: '7 Days to Die', type: 0}});
     } else {
-        bot.setPresence(
-            {idle_since: 10, game: {name: '', type: 0}}
-        );
+        bot.setPresence({idle_since: 10, game: {name: '', type: 0}});
     }
 }
 
