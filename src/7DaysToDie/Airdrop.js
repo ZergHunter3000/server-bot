@@ -15,7 +15,7 @@ module.exports = {
         this.x = coordinates.x;
         this.y = coordinates.y;
 
-        logger.info('-| Airdrop created with coordinates (' + this.x + ', ' + this.y + ') |-')
+        logger.info('-| Airdrop created with coordinates (' + this.x + ', ' + this.y + ') |-');
     }
 };
 
@@ -39,6 +39,9 @@ function _getPlayerDirection(player) {
 
 function _getAirDropDetails(data) {
     let coordinates = {};
+    let test = data;
+    test = test.replace('[^1-9 ]', '');
+    console.log(test);
     // data.replace (/abc/g, ''); TODO Implement
     data = data.replace('(', '');
     data = data.replace('(', '');

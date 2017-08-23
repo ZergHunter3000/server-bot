@@ -11,12 +11,13 @@ module.exports = {
 };
 
 function _getPlayers(data) {
-    console.log('~~~IN CASE OF CRASH, DATA IN FUNCTION = ', data.toString());
     let players = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
-    console.log('~~~IN CASE OF CRASH, PLAYER CALCULATE = ', players.toString());
 
     if (players === null) {
-        console.log('~~~~~~~~~~~~~CRASH WAS GOING TO HAPPEN, ABORTED, CHECK LOGS, SEND TO CONNOR')
+        console.log('\n~~~~~~~~~~~~~~~~~~~~~~~CRASH WAS GOING TO HAPPEN, ABORTED, SEND BELOW TO CONNOR~~~~~~~~~~~~~~~~~~~~~~~');
+        console.log('~~~~~~~~~~~~~FUNCTION DATA~~~~~~~~~~~~~\n', data.toString());
+        console.log('~~~~~~~~~~~~~PLAYERS~~~~~~~~~~~~~\n', players);
+        console.log('\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
         return [];
     }
     let currentPlayers = [];

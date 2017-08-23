@@ -9,7 +9,7 @@ let Players       = require('./7DaysToDie/Players.js');
 let usermap       = require('./usermap.json');
 
 let socket;
-let playersData;
+let currentPlayers;
 let airdropToggle = false;
 
 
@@ -84,11 +84,11 @@ function _initializeSocketListeners() {
         // Display # of players online
         if (data.toString().indexOf('in the game') !== -1) {
             if (airdropToggle === false) {
-                playersData = data;
-                let currentPlayers = new Players.Players(playersData, logger);
+                //playersData = data;
+                //currentPlayers = new Players.Players(data, logger);
                 sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
             } else {
-                playersData = data; //= data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
+                currentPlayers = data; //= data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
                 airdropToggle = false;
             }
         }
