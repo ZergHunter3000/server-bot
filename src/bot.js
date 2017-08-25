@@ -9,7 +9,7 @@ let Players       = require('./7DaysToDie/Players.js');
 let usermap       = require('./usermap.json');
 
 let socket;
-let currentPlayers;
+let currentPlayerData;
 let airdropToggle = false;
 
 
@@ -88,7 +88,7 @@ function _initializeSocketListeners() {
                 //currentPlayers = new Players.Players(data, logger);
                 sendMessage('There are ' + data.toString().match(new RegExp('Total of ' + '(.*)' + ' in the game'))[1] + ' player(s) online.', 'info');
             } else {
-                currentPlayers = data; //= data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
+                currentPlayerData = data; //= data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
                 airdropToggle = false;
             }
         }
@@ -96,7 +96,7 @@ function _initializeSocketListeners() {
         // Notify airdrop spawned
         if (data.toString().indexOf('Spawned supply crate') !== -1) {
             sendMessage('Airdrop incoming; calculating nearest player...', 'info', true);
-            playersData = null;
+            currentPlayerData = null;
             airdropToggle = true;
             socket.emit('getPlayers');
             socket.emit('calculateAirdropPing', data);
@@ -127,8 +127,9 @@ function _initializeSocketListeners() {
      **************/
     // Air Drop
     socket.on('calculateAirdropPing', function (data) {
-        let tempData = playersData;
+        let tempData = currentPlayerData;
         if (tempData !== null) {
+            currentPlayerData = null;
             let airdrop = new Airdrop.Airdrop(data, logger);
             let currentPlayers = new Players.Players(tempData, logger);
             let closest = airdrop.findClosest(currentPlayers.players, airdrop);

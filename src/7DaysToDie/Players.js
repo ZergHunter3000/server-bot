@@ -1,19 +1,19 @@
 module.exports = {
-    Players: function (data, logger) {
+    Players: function (data) {
         this.players = [];
 
         this._getPlayers = _getPlayers;
-        logger.info('~~~IN CASE OF CRASH, DATA = ', data.toString());
+        console.log('~~~IN CASE OF CRASH, DATA = ', data.toString());
         this.players = this._getPlayers(data);
 
-        logger.info('-| Current player list calculated as: ' + this.players + ' |-');
+        console.log('-| Current player list calculated as: ' + this.players + ' |-');
     }
 };
 
 function _getPlayers(data) {
     let players = data.toString().match(new RegExp('id\\s?(.*?)\\s?ping'));
 
-    if (players === null) {
+    if (players == null) {
         console.log('\n~~~~~~~~~~~~~~~~~~~~~~~CRASH WAS GOING TO HAPPEN, ABORTED, SEND BELOW TO CONNOR~~~~~~~~~~~~~~~~~~~~~~~');
         console.log('~~~~~~~~~~~~~FUNCTION DATA~~~~~~~~~~~~~\n', data.toString());
         console.log('~~~~~~~~~~~~~PLAYERS~~~~~~~~~~~~~\n', players);
@@ -24,6 +24,8 @@ function _getPlayers(data) {
     let next;
     let name;
     let pos;
+
+    console.log('THIS IS THE PLAYER DETAILS: ', players);
 
     for (let i = 0; i < players.length; i += 2) {
         next = {};
