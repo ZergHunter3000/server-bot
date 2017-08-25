@@ -132,8 +132,12 @@ function _initializeSocketListeners() {
             currentPlayerData = null;
             let airdrop = new Airdrop.Airdrop(data, logger);
             let currentPlayers = new Players.Players(tempData, logger);
-            let closest = airdrop.findClosest(currentPlayers.players, airdrop);
-            sendMessage('Airdrop spawned ' + airdrop.getPlayerDirection(closest, airdrop) + ' of ' + closest.name + '.', 'info', true);
+            if (currentPlayers.length === 0) {
+                sendMessage('Bot failure due to stupid telnet data.');
+            } else {
+                let closest = airdrop.findClosest(currentPlayers.players, airdrop);
+                sendMessage('Airdrop spawned ' + airdrop.getPlayerDirection(closest, airdrop) + ' of ' + closest.name + '.', 'info', true);
+            }
         } else {
             socket.emit('calculateAirdropPong', data);
         }
